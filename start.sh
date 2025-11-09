@@ -1,3 +1,6 @@
+start.sh:
+
+ 
 #!/bin/bash
 
 # Start VNC server
