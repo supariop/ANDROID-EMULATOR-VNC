@@ -11,13 +11,28 @@ RUN apt-get update && apt-get install -y \
     x11vnc \
     adb \
     openjdk-8-jdk \
+    libc6-i386 \
     --no-install-recommends
 
 # Download and install Android SDK Command Line Tools
 RUN wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip -O android-commandline-tools.zip
 RUN mkdir -p /opt/android-sdk && unzip android-commandline-tools.zip -d /opt/android-sdk && rm android-commandline-tools.zip
+
 ENV ANDROID_HOME=/opt/android-sdk
-ENV PATH=$PATH:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
+
+# Dynamically determine the SDK command-line tools directory
+RUN SDK_DIR=$(ls -d /opt/android-sdk/cmdline-tools/* | head -n 1) && \
+    echo "SDK Directory: $SDK_DIR" && \
+    export PATH=$PATH:${SDK_DIR}/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
+
+# The above RUN command sets the PATH only for that layer.  To make it
+# permanent, we need to set it in ENV as well, but we can't directly
+# use the $SDK_DIR variable there.  So, we'll use a trick:  we'll write
+# the SDK_DIR to a file, and then read it back in a later ENV command.
+RUN SDK_DIR=$(ls -d /opt/android-sdk/cmdline-tools/* | head -n 1) && \
+    echo "$SDK_DIR" > /tmp/sdk_dir.txt
+
+ENV PATH=$PATH:$(cat /tmp/sdk_dir.txt)/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
 
 # Install necessary SDK components
 RUN yes | sdkmanager "platform-tools" "platforms;android-${ANDROID_VERSION##*.}" "system-images;android-${ANDROID_VERSION##*.};google_apis;x86" "emulator"
