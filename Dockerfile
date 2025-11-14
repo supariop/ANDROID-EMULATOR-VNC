@@ -1,52 +1,28 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
-ENV ANDROID_VERSION=7.1.2
-ENV ANDROID_SERIAL=emulator-5554
-ENV VNC_PASSWORD="Clown80990@"
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-8-jdk \
     wget \
     unzip \
     xvfb \
     x11vnc \
-    adb \
-    openjdk-8-jdk \
-    libc6-i386 \
-    --no-install-recommends
+    fluxbox
 
 # Download and install Android SDK Command Line Tools
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip -O android-commandline-tools.zip
-RUN mkdir -p /opt/android-sdk && unzip android-commandline-tools.zip -d /opt/android-sdk && rm android-commandline-tools.zip
+RUN wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip -O android-sdk.zip
+RUN mkdir /opt/android-sdk && unzip android-sdk.zip -d /opt/android-sdk
+ENV ANDROID_HOME=/opt/android-sdk/cmdline-tools
+ENV PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
 
-ENV ANDROID_HOME=/opt/android-sdk
+# Install necessary Android SDK components
+RUN yes | sdkmanager --sdk_root=/opt/android-sdk "platform-tools" "platforms;android-28" "system-images;android-28;google_apis;x86" "emulator"
 
-# Dynamically determine the SDK command-line tools directory
-RUN SDK_DIR=$(ls -d /opt/android-sdk/cmdline-tools/* | head -n 1) && \
-    echo "SDK Directory: $SDK_DIR" && \
-    export PATH=$PATH:${SDK_DIR}/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
+# Create and configure AVD (Android Virtual Device)
+RUN avdmanager create avd -n Pixel_API_28 -k "system-images;android-28;google_apis;x86" -f
 
-# The above RUN command sets the PATH only for that layer.  To make it
-# permanent, we need to set it in ENV as well, but we can't directly
-# use the $SDK_DIR variable there.  So, we'll use a trick:  we'll write
-# the SDK_DIR to a file, and then read it back in a later ENV command.
-RUN SDK_DIR=$(ls -d /opt/android-sdk/cmdline-tools/* | head -n 1) && \
-    echo "$SDK_DIR" > /tmp/sdk_dir.txt
-
-ENV PATH=$PATH:$(cat /tmp/sdk_dir.txt)/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
-
-# Install necessary SDK components
-RUN yes | sdkmanager "platform-tools" "platforms;android-${ANDROID_VERSION##*.}" "system-images;android-${ANDROID_VERSION##*.};google_apis;x86" "emulator"
-
-# Create AVD
-RUN echo "no" | avdmanager create avd -n Pixel_API${ANDROID_VERSION##*.} -k "system-images;android-${ANDROID_VERSION##*.};google_apis;x86" -f
-
-# VNC setup
-RUN apt-get install -y x11vnc
-RUN mkdir /root/.vnc
-RUN echo "$VNC_PASSWORD" > /root/.vnc/passwd
-RUN chmod 600 /root/.vnc/passwd
-
-# Startup script
+# Copy startup script
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
