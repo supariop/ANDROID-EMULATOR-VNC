@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  android7:
+    build: .
+    container_name: android7-emulator
+    ports:
+      - "5900:5900"
+      - "5555:5555"
+    devices:
+      - /dev/kvm:/dev/kvm   # Safe even if host has no KVM
+    privileged: true
