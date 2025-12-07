@@ -1,29 +1,20 @@
 #!/bin/bash
 
-echo "Checking for KVM support..."
-if [[ -e /dev/kvm ]]; then
-    echo "✔ KVM detected — using FAST x86 emulator"
-    AVD="android7_x86"
-    GPU="auto"
-else
-    echo "❌ No KVM — using SLOW ARM emulator"
-    AVD="android7_arm"
-    GPU="swiftshader_indirect"
-fi
+# Clean leftover X lock
+rm -f /tmp/.X0-lock
 
-# Start virtual display
+# Start Xvfb
 Xvfb :0 -screen 0 1280x720x24 &
 export DISPLAY=:0
 
-# Start VNC server
-x11vnc -forever -usepw -display :0 &
-
-# Start window manager
+# Start VNC server with password "1234"
+x11vnc -forever -passwd 1234 -display :0 &
 fluxbox &
 
-# Start emulator
-emulator -avd $AVD \
-    -gpu $GPU \
+echo "Starting Android 7 ARM emulator (no KVM)..."
+
+emulator -avd android7_arm \
+    -gpu swiftshader_indirect \
     -no-boot-anim \
-    -verbose \
+    -no-snapshot \
     -qemu -m 2048
