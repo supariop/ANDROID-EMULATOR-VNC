@@ -1,38 +1,54 @@
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/platform-tools
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    openjdk-8-jdk \
-    wget \
-    unzip \
-    xvfb \
-    x11vnc \
-    fluxbox
+# Install required packages
+RUN apt-get update && apt-get install -y \
+    wget unzip curl sudo \
+    lib32stdc++6 lib32z1 \
+    x11vnc xvfb \
+    fluxbox net-tools \
+    qemu-kvm \
+    && rm -rf /var/lib/apt/lists/*
 
-# Download and install Android SDK Command Line Tools
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip -O android-sdk.zip
-RUN mkdir -p /opt/android-sdk
-RUN unzip -q android-sdk.zip -d /opt/android-sdk
+# Install Android Commandline Tools
+RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+WORKDIR /opt/android-sdk/cmdline-tools
 
-# Determine the actual location of sdkmanager
-RUN SDK_DIR=$(find /opt/android-sdk -name sdkmanager | xargs dirname) && \
-    echo "SDK_DIR is $SDK_DIR" && \
-    chmod +x "$SDK_DIR/sdkmanager"
+RUN wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip \
+    && unzip tools.zip -d tools \
+    && rm tools.zip
 
-ENV ANDROID_HOME=/opt/android-sdk
-ENV PATH=$PATH:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
+# Accept SDK licenses
+RUN yes | sdkmanager --licenses
 
-# Install necessary Android SDK components
-RUN yes | /opt/android-sdk/cmdline-tools/tools/bin/sdkmanager --sdk_root=/opt/android-sdk "platform-tools" "platforms;android-28" "system-images;android-28;google_apis;x86" "emulator"
+# Install Android 7 images (x86 + ARM)
+RUN sdkmanager \
+    "platform-tools" \
+    "platforms;android-25" \
+    "system-images;android-25;google_apis;x86" \
+    "system-images;android-25;google_apis;arm64-v8a" \
+    "emulator"
 
-# Create and configure AVD (Android Virtual Device)
-RUN yes | /opt/android-sdk/cmdline-tools/tools/bin/avdmanager create avd -n Pixel_API_28 -k "system-images;android-28;google_apis;x86" -f
+# Create both AVD profiles
+RUN echo no | avdmanager create avd \
+    --name android7_x86 \
+    --package "system-images;android-25;google_apis;x86" \
+    --device "Nexus 5"
 
-# Copy startup script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+RUN echo no | avdmanager create avd \
+    --name android7_arm \
+    --package "system-images;android-25;google_apis;arm64-v8a" \
+    --device "Nexus 5"
 
+# Copy start script
+COPY start-emulator.sh /start-emulator.sh
+RUN chmod +x /start-emulator.sh
+
+# VNC Port
 EXPOSE 5900
+EXPOSE 5555
 
-CMD ["/start.sh"]
+CMD ["/start-emulator.sh"]
