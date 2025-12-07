@@ -1,11 +1,14 @@
-version: "3.8"
 services:
-  android7:
-    build: .
-    container_name: android7-emulator
-    ports:
-      - "5900:5900"
-      - "5555:5555"
-    devices:
-      - /dev/kvm:/dev/kvm   # Safe even if host has no KVM
+  android:
+    image: budtmo/docker-android-x86-8.1
+    container_name: android-emulator
     privileged: true
+    ports:
+      - "6080:6080"    # noVNC (browser)
+      - "5555:5555"    # adb
+    environment:
+      - DEVICE=Samsung Galaxy S10
+      - EMULATOR_ARGS=-noaudio
+      - VNC_PASSWORD=Clown80990@
+    volumes:
+      - ./data:/root
