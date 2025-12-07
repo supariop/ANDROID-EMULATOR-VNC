@@ -11,7 +11,12 @@ RUN apt-get update && apt-get install -y \
     x11vnc xvfb \
     fluxbox net-tools \
     qemu-kvm \
+    openjdk-11-jdk \
     && rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV PATH="$JAVA_HOME/bin:${PATH}"
 
 # Create folder structure
 RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
@@ -23,17 +28,16 @@ RUN wget https://dl.google.com/android/repository/commandlinetools-linux-9477386
     && unzip tools.zip \
     && rm tools.zip
 
-# The extracted folder is called "cmdline-tools"
-# Move its contents UP into the correct structure
+# Move tools into correct folder
 RUN mv cmdline-tools/* . && rm -rf cmdline-tools
 
-# Verify sdkmanager exists (debug only)
+# Debug: list sdkmanager
 RUN ls -la /opt/android-sdk/cmdline-tools/latest/bin
 
 # Accept licenses
 RUN yes | sdkmanager --licenses
 
-# Install components
+# Install Android components
 RUN sdkmanager \
     "platform-tools" \
     "platforms;android-25" \
