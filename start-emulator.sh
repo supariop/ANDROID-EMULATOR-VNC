@@ -8,7 +8,7 @@ if [[ -e /dev/kvm ]]; then
 else
     echo "❌ No KVM — using SLOW ARM emulator"
     AVD="android7_arm"
-    GPU="swiftshader"
+    GPU="swiftshader_indirect"
 fi
 
 # Start virtual display
@@ -18,7 +18,7 @@ export DISPLAY=:0
 # Start VNC server
 x11vnc -forever -usepw -display :0 &
 
-# Start Fluxbox window manager
+# Start window manager
 fluxbox &
 
 # Start emulator
