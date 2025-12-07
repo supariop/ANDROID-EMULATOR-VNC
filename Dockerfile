@@ -13,21 +13,27 @@ RUN apt-get update && apt-get install -y \
     qemu-kvm \
     && rm -rf /var/lib/apt/lists/*
 
-# Create SDK folder
-RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+# Create folder structure
+RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
 
-WORKDIR /opt/android-sdk/cmdline-tools
+WORKDIR /opt/android-sdk/cmdline-tools/latest
 
-# Download Android Command-line tools
+# Download & extract tools
 RUN wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip \
-    && mkdir -p latest \
-    && unzip tools.zip -d latest \
+    && unzip tools.zip \
     && rm tools.zip
+
+# The extracted folder is called "cmdline-tools"
+# Move its contents UP into the correct structure
+RUN mv cmdline-tools/* . && rm -rf cmdline-tools
+
+# Verify sdkmanager exists (debug only)
+RUN ls -la /opt/android-sdk/cmdline-tools/latest/bin
 
 # Accept licenses
 RUN yes | sdkmanager --licenses
 
-# Install required Android components
+# Install components
 RUN sdkmanager \
     "platform-tools" \
     "platforms;android-25" \
@@ -39,19 +45,16 @@ RUN sdkmanager \
 RUN echo no | avdmanager create avd \
     --name android7_x86 \
     --package "system-images;android-25;google_apis;x86" \
-    --device "Nexus 5" \
-    --sdcard 512M
+    --device "Nexus 5"
 
 RUN echo no | avdmanager create avd \
     --name android7_arm \
     --package "system-images;android-25;google_apis;arm64-v8a" \
-    --device "Nexus 5" \
-    --sdcard 512M
+    --device "Nexus 5"
 
-# Copy start script
 COPY start-emulator.sh /start-emulator.sh
 RUN chmod +x /start-emulator.sh
 
-EXPOSE 5900 5555
+EXPOSE 5555 5900
 
 CMD ["/start-emulator.sh"]
